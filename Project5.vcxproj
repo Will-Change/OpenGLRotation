@@ -76,11 +76,11 @@
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <LinkIncremental>true</LinkIncremental>
-    <IncludePath>C:\Users\pavit\Desktop\stb-master;C:\Users\pavit\Desktop\glm-master;C:\Users\pavit\Desktop\Lab 4 Sample Object Hierarchy\assimp\include;C:\Users\pavit\Desktop\Lab 1\glew-1.10.0\include;C:\Users\pavit\Desktop\Lab 1\freeglut\include;$(IncludePath)</IncludePath>
+    <IncludePath>C:\Users\pavit\Desktop\imgui-master;C:\Users\pavit\Desktop\imgui-master\backends;C:\Users\pavit\Desktop\stb-master;C:\Users\pavit\Desktop\glm-master;C:\Users\pavit\Desktop\Lab 4 Sample Object Hierarchy\assimp\include;C:\Users\pavit\Desktop\Lab 1\glew-1.10.0\include;C:\Users\pavit\Desktop\Lab 1\freeglut\include;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LinkIncremental>false</LinkIncremental>
-    <IncludePath>C:\Users\pavit\Desktop\stb-master;C:\Users\pavit\Desktop\glm-master;C:\Users\pavit\Desktop\Lab 4 Sample Object Hierarchy\assimp\include;C:\Users\pavit\Desktop\Lab 1\glew-1.10.0\include;C:\Users\pavit\Desktop\Lab 1\freeglut\include;$(IncludePath)</IncludePath>
+    <IncludePath>C:\Users\pavit\Desktop\imgui-master;C:\Users\pavit\Desktop\imgui-master\backends;C:\Users\pavit\Desktop\stb-master;C:\Users\pavit\Desktop\glm-master;C:\Users\pavit\Desktop\Lab 4 Sample Object Hierarchy\assimp\include;C:\Users\pavit\Desktop\Lab 1\glew-1.10.0\include;C:\Users\pavit\Desktop\Lab 1\freeglut\include;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LinkIncremental>true</LinkIncremental>

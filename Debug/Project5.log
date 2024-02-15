@@ -1,2 +1,7 @@
 ﻿  main.cpp
+C:\Users\pavit\source\repos\Project5\Project5\main.cpp(395,1): warning C4305: 'initializing': truncation from 'double' to '_Ty'
+          with
+          [
+              _Ty=GLfloat
+          ]
   Project5.vcxproj -> C:\Users\pavit\source\repos\Project5\Debug\Project5.exe

@@ -281,7 +281,7 @@ GLuint CompileShaders()
 
 GLuint CompileSkyboxShaders()
 {
-	//Start the process of setting up our shaders by creating a program ID
+	//Start the process of settingdddd up our shaders by creating a program ID
 	//Note: we will link all the shaders together into this ID
 	skyboxProgramID = glCreateProgram();
 	if (skyboxProgramID == 0) {
@@ -352,7 +352,7 @@ void generateObjectBufferMesh() {
 	glBufferData(GL_ARRAY_BUFFER, mesh_data.mPointCount * sizeof(vec3), &mesh_data.mNormals[0], GL_STATIC_DRAW);
 
 	//	This is for texture coordinates which you don't currently need, so I have commented it out
-	//	unsigned int vt_vbo = 0;
+	//	unsigned int vt_vbo = 0;ddddddddd
 	//	glGenBuffers (1, &vt_vbo);
 	//	glBindBuffer (GL_ARRAY_BUFFER, vt_vbo);
 	//	glBufferData (GL_ARRAY_BUFFER, monkey_head_data.mTextureCoords * sizeof (vec2), &monkey_head_data.mTextureCoords[0], GL_STATIC_DRAW);
@@ -377,6 +377,24 @@ void generateObjectBufferMesh() {
 GLfloat pitch = 0.0f;
 GLfloat yaw = 0.0f;
 GLfloat roll = 0.0f;
+
+int NUM_LIGHTS = 4;
+
+std::vector<GLfloat> lightPositionsArray {
+    -10.0, 10.0, 10.0,  // light 0 position
+    10.0, 10.0, 10.0, // light 1 position
+    -10.0, -10.0, 10.0, // light 2 position
+    10.0, -10.0, 10.0 // light 3 position
+};
+
+std::vector<GLfloat> lightColorsArray {
+    50.0, 50.0, 50.0, // light 0 color
+    50.0, 50.0, 50.0, // light 1 color
+    50.0, 50.0, 50.0,  // light 2 color
+    50.8, 50.0, 50.0 // light 3 color
+};
+
+
 
 enum CameraMode { DEFAULT, FIRST_PERSON, THIRD_PERSON }; 
 CameraMode currentCameraMode = DEFAULT;
@@ -471,17 +489,15 @@ void display() {
     //glClearColor(0.5f, 0.5f, 0.5f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-
-
     // Calculate view matrix without the translation component for the skybox
-    glm::mat4 view = glm::lookAt(cameraPos, cameraTarget, up); // You should have these variables defined based on your camera's current position and orientation
+    glm::mat4 view = glm::lookAt(cameraPos, cameraTarget, up); 
     glm::mat4 viewNoTranslation = glm::mat4(glm::mat3(view)); // Remove translation component for the skybox
 
     // Render skybox first
     glDepthMask(GL_FALSE); // Disable writing to the depth buffer
     glUseProgram(skyboxProgramID); // Use skybox shader
 
-    // Pass the modified view matrix and your projection matrix to the shader
+    // Pass the modified view matrix and projection matrix to the shader
     glUniformMatrix4fv(glGetUniformLocation(skyboxProgramID, "view"), 1, GL_FALSE, glm::value_ptr(viewNoTranslation));
     glm::mat4 projection = glm::perspective(glm::radians(45.0f), (float)width / (float)height, 0.1f, 100.0f);
     glUniformMatrix4fv(glGetUniformLocation(skyboxProgramID, "projection"), 1, GL_FALSE, glm::value_ptr(projection));
@@ -492,17 +508,19 @@ void display() {
     glDrawArrays(GL_TRIANGLES, 0, 36);
     glBindVertexArray(0);
     glDepthFunc(GL_LESS);
-    glDepthMask(GL_TRUE); // Enable writing to the depth buffer again for other objects
+    glDepthMask(GL_TRUE); // Enable writing dto the depth buffer again for other objects
 
-    // Now render your scene as usual
+    // Now render scene as usual
     glUseProgram(shaderProgramID);
 
-    // You might need to recalculate or reset the view matrix for the rest of your scene
-
-
+    
     int matrix_location = glGetUniformLocation(shaderProgramID, "model");
     int view_mat_location = glGetUniformLocation(shaderProgramID, "view");
     int proj_mat_location = glGetUniformLocation(shaderProgramID, "proj");
+    int cameraPosLoc = glGetUniformLocation(shaderProgramID, "cameraPos");
+    GLint lightPositionsLocation = glGetUniformLocation(shaderProgramID, "lightPositions");
+	GLint lightColorsLocation = glGetUniformLocation(shaderProgramID, "lightColors");
+
 
     glm::mat4 persp_proj = glm::perspective(glm::radians(45.0f), (float)width / (float)height, 0.1f, 1000.0f);
 
@@ -516,14 +534,13 @@ void display() {
 
     
 
-    glm::vec3 modelPosition = glm::vec3(0.0, 0.0, 0.0); // Assuming this is the model's position
+    glm::vec3 modelPosition = glm::vec3(0.0, 0.0, 0.0); // Assumfffddddddddddfffffindddddg this is the model's position
     switch (currentCameraMode) {
         case FIRST_PERSON:
-            // Adjust this offset for eye height
-            glm::vec3 eyeOffset = glm::vec3(0.0, 2.5, 0.0); // Adjust this based on your model's size and desired eye height
+            // offset for eye height
+            glm::vec3 eyeOffset = glm::vec3(0.0, 2.5, 0.0); 
 		    cameraPos = modelPosition + eyeOffset; // Position the camera at eye level relative to the model
 
-		    // Calculate the direction the model is looking, assuming forward is along the negative Z-axis in model space
 		    glm::vec3 lookDirection = glm::vec3(combinedQuat * glm::vec4(0.0, 0.0, -1.0, 0.0));
 		    cameraTarget = cameraPos + lookDirection; // The point the camera is looking at, in world space
 		    break;
@@ -541,72 +558,22 @@ void display() {
     }
     glm::mat4 rotation = glm::rotate(glm::mat4(1.0f), glm::radians(270.0f), glm::vec3(0.0f, 1.0f, 0.0f));
     model = model * rotation;
+    glm::vec3 scale = glm::vec3(0.01f, 0.01f, 0.01f);
+    //model = glm::scale(model, scale);
+    
 
     view = glm::lookAt(cameraPos, cameraTarget, up);
 
     glUniformMatrix4fv(matrix_location, 1, GL_FALSE, glm::value_ptr(model));
     glUniformMatrix4fv(view_mat_location, 1, GL_FALSE, glm::value_ptr(view));
     glUniformMatrix4fv(proj_mat_location, 1, GL_FALSE, glm::value_ptr(persp_proj));
+    glUniformMatrix4fv(cameraPosLoc, 1, GL_FALSE, glm::value_ptr(cameraPos));
+    glUniform3fv(lightPositionsLocation, NUM_LIGHTS, lightPositionsArray.data());
+	glUniform3fv(lightColorsLocation, NUM_LIGHTS, lightColorsArray.data());
 
     glDrawArrays(GL_TRIANGLES, 0, mesh_data.mPointCount);
 
     //renderSkybox();
-
-    glutSwapBuffers();
-}
-void display12() {
-    glEnable(GL_DEPTH_TEST);
-    glDepthFunc(GL_LESS);
-    glClearColor(0.5f, 0.5f, 0.5f, 1.0f);
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-    glUseProgram(shaderProgramID);
-
-    // You might need to recalculate or reset the view matrix for the rest of your scene
-
-
-    int matrix_location = glGetUniformLocation(shaderProgramID, "model");
-    int view_mat_location = glGetUniformLocation(shaderProgramID, "view");
-    int proj_mat_location = glGetUniformLocation(shaderProgramID, "proj");
-
-    glm::mat4 persp_proj = glm::perspective(glm::radians(45.0f), (float)width / (float)height, 0.1f, 1000.0f);
-
-    // Quaternion-based rotation for the plane
-    glm::quat pitchQuat = glm::angleAxis(glm::radians(pitch), glm::vec3(1.0f, 0.0f, 0.0f));
-    glm::quat yawQuat = glm::angleAxis(glm::radians(yaw), glm::vec3(0.0f, 1.0f, 0.0f));
-    glm::quat rollQuat = glm::angleAxis(glm::radians(roll), glm::vec3(0.0f, 0.0f, 1.0f));
-    glm::quat combinedQuat = rollQuat * yawQuat * pitchQuat;
-    glm::mat4 rotationMatrix = glm::toMat4(combinedQuat);
-    glm::mat4 model = rotationMatrix;
-
-    glm::vec3 cameraPos;
-    glm::vec3 cameraTarget = glm::vec3(0.0, 0.0, 0.0);
-    glm::vec3 up = glm::vec3(0.0, 1.0, 0.0);
-
-    switch (currentCameraMode) {
-        case FIRST_PERSON:
-            cameraPos = glm::vec3(model * glm::vec4(0.0, 0.5, 0.0, 1.0)); // Adjust for a realistic cockpit view
-            cameraTarget = glm::vec3(model * glm::vec4(0.0, 0.5, -1.0, 1.0)); // Looking forward from the cockpit
-            break;
-        case THIRD_PERSON:
-            // Calculate the offset position in the plane's local space and then transform it to world space
-            glm::vec3 offset = glm::vec3(0.0f, 2.0f, 10.0f); // Offset the camera above and behind the plane
-            cameraPos = glm::vec3(model * glm::vec4(offset, 1.0)); // Transform offset to world space
-            cameraTarget = glm::vec3(model * glm::vec4(0.0, 0.0, 0.0, 1.0)); // Plane's position in world space
-            break;
-        case DEFAULT:
-            cameraPos = glm::vec3(0.0, 0.0, -5.0f);
-            break;
-    }
-
-    glm::mat4 view = glm::lookAt(cameraPos, cameraTarget, up);
-
-    persp_proj = glm::perspective(glm::radians(45.0f), (float)width / (float)height, 0.1f, 1000.0f);
-
-    glUniformMatrix4fv(matrix_location, 1, GL_FALSE, glm::value_ptr(model));
-    glUniformMatrix4fv(view_mat_location, 1, GL_FALSE, glm::value_ptr(view));
-    glUniformMatrix4fv(proj_mat_location, 1, GL_FALSE, glm::value_ptr(persp_proj));
-
-    glDrawArrays(GL_TRIANGLES, 0, mesh_data.mPointCount);
 
     glutSwapBuffers();
 }
@@ -627,22 +594,21 @@ void updateScene() {
 
 void init()
 {
-	// Set up the shaders
+
 	GLuint shaderProgramID = CompileShaders();
 	GLuint skyboxProgramID = CompileSkyboxShaders();
-	// load mesh into a vertex buffer array
+
 	generateObjectBufferMesh();
 
-	// Setup skybox
     glGenVertexArrays(1, &skyboxVAO);
     glGenBuffers(1, &skyboxVBO);
     glBindVertexArray(skyboxVAO);
     glBindBuffer(GL_ARRAY_BUFFER, skyboxVBO);
     glBufferData(GL_ARRAY_BUFFER, sizeof(skyboxVertices), &skyboxVertices, GL_STATIC_DRAW);
-    glEnableVertexAttribArray(0); // We assume the skybox shader expects the vertex position at location 0
+    glEnableVertexAttribArray(0);
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
 
-    // Load cubemap textures
+
     skyboxTextureID = loadCubemap(skyboxFaces);
 }
 
@@ -652,14 +618,14 @@ int main(int argc, char** argv) {
 	glutInit(&argc, argv);
 	glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB);
 	glutInitWindowSize(width, height);
-	glutCreateWindow("Hello Triangle");
+	glutCreateWindow("Assignment2");
 
 	// Tell glut where the display function is
 	glutDisplayFunc(display);
 	glutIdleFunc(updateScene);
 	glutKeyboardFunc(keypress);
 
-	// A call to glewInit() must be done after glut is initialized!
+	// A call to glewInit() must be done after glut is ddfffddinitialidzed!
 	GLenum res = glewInit();
 	// Check for any errors
 	if (res != GLEW_OK) {
@@ -673,57 +639,4 @@ int main(int argc, char** argv) {
 	return 0;
 }
 
-//*/
-// euler
-/*
-void display() {
-    glEnable(GL_DEPTH_TEST);
-    glDepthFunc(GL_LESS);
-    glClearColor(0.5f, 0.5f, 0.5f, 1.0f);
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-    glUseProgram(shaderProgramID);
-
-    int matrix_location = glGetUniformLocation(shaderProgramID, "model");
-    int view_mat_location = glGetUniformLocation(shaderProgramID, "view");
-    int proj_mat_location = glGetUniformLocation(shaderProgramID, "proj");
-
-    glm::mat4 model = glm::mat4(1.0f);
-    model = glm::rotate(model, glm::radians(pitch), glm::vec3(1.0f, 0.0f, 0.0f));
-    model = glm::rotate(model, glm::radians(yaw), glm::vec3(0.0f, 1.0f, 0.0f));
-    model = glm::rotate(model, glm::radians(roll), glm::vec3(0.0f, 0.0f, 1.0f));
-
-    glm::vec3 cameraPos;
-    glm::vec3 cameraTarget = glm::vec3(0.0, 0.0, 0.0);
-    glm::vec3 up = glm::vec3(0.0, 1.0, 0.0);
-
-    switch (currentCameraMode) {
-        case FIRST_PERSON:
-            cameraPos = glm::vec3(model * glm::vec4(0.0, 0.5, 0.0, 1.0)); // Adjust for a realistic cockpit view
-            cameraTarget = glm::vec3(model * glm::vec4(0.0, 0.5, -1.0, 1.0)); // Looking forward from the cockpit
-            break;
-        case THIRD_PERSON:
-            // Calculate the offset position in the plane's local space and then transform it to world space
-            glm::vec3 offset = glm::vec3(0.0f, 2.0f, 10.0f); // Offset the camera above and behind the plane
-            cameraPos = glm::vec3(model * glm::vec4(offset, 1.0)); // Transform offset to world space
-            cameraTarget = glm::vec3(model * glm::vec4(0.0, 0.0, 0.0, 1.0)); // Plane's position in world space
-            break;
-        case DEFAULT:
-            cameraPos = glm::vec3(0.0, 0.0, -5.0f);
-            break;
-    }
-
-    glm::mat4 view = glm::lookAt(cameraPos, cameraTarget, up);
-
-    glm::mat4 persp_proj = glm::perspective(glm::radians(45.0f), (float)width / (float)height, 0.1f, 1000.0f);
-
-    glUniformMatrix4fv(matrix_location, 1, GL_FALSE, glm::value_ptr(model));
-    glUniformMatrix4fv(view_mat_location, 1, GL_FALSE, glm::value_ptr(view));
-    glUniformMatrix4fv(proj_mat_location, 1, GL_FALSE, glm::value_ptr(persp_proj));
-
-    glDrawArrays(GL_TRIANGLES, 0, mesh_data.mPointCount);
-
-    glutSwapBuffers();
-}
-
-
-*/
+//ddddd
