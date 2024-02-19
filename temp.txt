@@ -1,0 +1,156 @@
+#version 430 core
+out vec4 FragColor;
+in vec3 WorldPos;
+in vec3 Normal;
+in vec2 TexCoords; 
+in mat3 TBN;
+
+layout(binding = 0) uniform samplerCube skybox1; 
+layout(binding = 1) uniform sampler2D texture_diffuse1;
+layout(binding = 2) uniform sampler2D normalMap;
+
+uniform vec3 camPos; 
+//uniform sampler2D texture_diffuse1;
+
+uniform float eta = 0.8; // Refraction index
+uniform vec3 albedo1 = vec3(10.0, 0.0, 0.0); // Base color
+uniform float metallic = 0.04; // Metallic factor
+uniform float roughness = 0.8; // Surface roughness
+uniform float ao = 0.3; // Ambient occlusion
+
+
+const float uIorR = 1.1; 
+const float uIorG = 1.0; 
+const float uIorB = 0.9; 
+
+const int NUM_LIGHTS = 4; 
+uniform vec3 lightPositions[NUM_LIGHTS];
+uniform vec3 lightColors[NUM_LIGHTS];
+
+const float PI = 3.14159265359;
+
+
+vec3 getNormalFromMap()
+{
+    vec3 tangentNormal = texture(normalMap, TexCoords).xyz * 2.0 - 1.0;
+    vec3 Q1  = dFdx(WorldPos);
+    vec3 Q2  = dFdy(WorldPos);
+    vec2 st1 = dFdx(TexCoords);
+    vec2 st2 = dFdy(TexCoords);
+    vec3 N   = normalize(Normal);
+    vec3 T  = normalize(Q1*st2.t - Q2*st1.t);
+    vec3 B  = -normalize(cross(N, T));
+    mat3 TBN = mat3(T, B, N);
+    return normalize(TBN * tangentNormal);
+}
+
+// Fresnel using Schlick's approximation, This and the other 4 functions from learnopengl.com
+float DistributionGGX(vec3 N, vec3 H, float roughness)
+{
+    float a = roughness*roughness;
+    float a2 = a*a;
+    float NdotH = max(dot(N, H), 0.0);
+    float NdotH2 = NdotH*NdotH;
+
+    float nom   = a2;
+    float denom = (NdotH2 * (a2 - 1.0) + 1.0);
+    denom = PI * denom * denom;
+
+    return nom / denom;
+}
+
+float GeometrySchlickGGX(float NdotV, float roughness)
+{
+    float r = (roughness + 1.0);
+    float k = (r*r) / 8.0;
+
+    float nom   = NdotV;
+    float denom = NdotV * (1.0 - k) + k;
+
+    return nom / denom;
+}
+
+float GeometrySmith(vec3 N, vec3 V, vec3 L, float roughness)
+{
+    float NdotV = max(dot(N, V), 0.0);
+    float NdotL = max(dot(N, L), 0.0);
+    float ggx2 = GeometrySchlickGGX(NdotV, roughness);
+    float ggx1 = GeometrySchlickGGX(NdotL, roughness);
+
+    return ggx1 * ggx2;
+}
+
+vec3 fresnelSchlick(float cosTheta, vec3 F0)
+{
+    return F0 + (1.0 - F0) * pow(clamp(1.0 - cosTheta, 0.0, 1.0), 5.0);
+}
+
+void main()
+{		
+    vec3 albedo = texture(texture_diffuse1, TexCoords).rgb;
+    vec3 normalFromMap = texture(normalMap, TexCoords).rgb;
+    normalFromMap = normalize(normalFromMap * 2.0 - 1.0); // Transform to [-1, 1] range
+    vec3 N = getNormalFromMap();
+
+    vec3 V = normalize(camPos - WorldPos);
+    vec3 R = reflect(-V, N);
+    R.y *= -1.0; 
+    R.z *= -1.0;
+
+    vec3 F0 = vec3(0.04); 
+    F0 = mix(F0, albedo, metallic);
+
+    vec3 Lo = vec3(0.0);
+    for(int i = 0; i < NUM_LIGHTS; ++i)
+    {
+        vec3 L = normalize(lightPositions[i] - WorldPos);
+        vec3 H = normalize(V + L);
+        float distance = length(lightPositions[i] - WorldPos);
+        float attenuation = 1.0 / (distance * distance);
+        vec3 radiance = lightColors[i] * attenuation;
+
+        float NDF = DistributionGGX(N, H, roughness);
+        float G = GeometrySmith(N, V, L, roughness);
+        vec3 F = fresnelSchlick(max(dot(H, V), 0.0), F0);
+
+        vec3 numerator = NDF * G * F; 
+        float denominator = 4.0 * max(dot(N, V), 0.0) * max(dot(N, L), 0.0) + 0.0001;
+        vec3 specular = numerator / denominator;
+
+        vec3 kS = F;
+        vec3 kD = vec3(1.0) - kS;
+        kD *= 1.0 - metallic;	  
+        float NdotL = max(dot(N, L), 0.0);        
+        Lo += (kD * albedo / PI + specular) * radiance * NdotL;  
+    }   
+
+    vec3 ambient = vec3(0.03) * albedo * ao;
+    vec3 color = ambient + Lo;
+
+    vec3 envReflection = texture(skybox1, R).rgb;
+    envReflection.y *= -1.0; 
+    envReflection.z *= -1.0;
+    color = mix(color, envReflection, metallic * 0.4); 
+
+    // Chromatic dispersion for refraction
+	vec3 refractVecR = refract(-normalize(V), normalize(N), eta/uIorR);
+	vec3 refractVecG = refract(-normalize(V), normalize(N), eta/uIorG);
+	vec3 refractVecB = refract(-normalize(V), normalize(N), eta/uIorB);
+
+	float refractedColorR = texture(skybox1, refractVecR).r;
+	float refractedColorG = texture(skybox1, refractVecG).g;
+	float refractedColorB = texture(skybox1, refractVecB).b;
+	vec3 refractedColor = vec3(refractedColorR, refractedColorG, refractedColorB);
+
+    // Combining reflection and refraction with chromatic dispersion
+    color = mix(color, refractedColor, metallic * 0.4);
+
+
+
+    color = color / (color + vec3(1.0));
+    color = pow(color, vec3(1.0/2.2));
+
+    FragColor = vec4(color, 1.0);
+    FragColor = texture(texture_diffuse1, TexCoords);
+
+}
